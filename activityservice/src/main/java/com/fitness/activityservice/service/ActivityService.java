@@ -4,7 +4,6 @@ import com.fitness.activityservice.dto.RequestActivity;
 import com.fitness.activityservice.dto.ResponseActivity;
 import com.fitness.activityservice.models.Activity;
 import com.fitness.activityservice.repository.ActivityRepository;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +11,16 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor        //Dependency injection, immutable objects
 public class ActivityService {
     private final ActivityRepository activityRepository;
+    private final UserValidation userValidation;
 
     public ResponseActivity trackActivity(RequestActivity request) {
+
+        boolean isValid=userValidation.validateUser(request.getUserId());
+
+        if (!isValid){
+            throw new RuntimeException("Invalid user "+request.getUserId());
+        }
+
         Activity activity=Activity.builder()
                 .userId(request.getUserId())
                 .type(request.getType())

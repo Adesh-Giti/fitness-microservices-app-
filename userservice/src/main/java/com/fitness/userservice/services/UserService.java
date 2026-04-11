@@ -6,10 +6,13 @@ import com.fitness.userservice.dto.ResponseDto;
 import com.fitness.userservice.models.User;
 import com.fitness.userservice.repository.UserRepo;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class UserService {
     private UserRepo userRepo;
 
@@ -23,6 +26,11 @@ public class UserService {
         user.setFirstName(requestDTO.getFirstName());
         user.setLastName(requestDTO.getLastName());
         User savedUser=userRepo.save(user);
+        return getResponseDto(savedUser);
+    }
+
+    @NonNull
+    private ResponseDto getResponseDto(User savedUser) {
         ResponseDto responseDto=new ResponseDto();
         responseDto.setId(savedUser.getId());
         responseDto.setEmail(savedUser.getEmail());
@@ -36,16 +44,12 @@ public class UserService {
 
     public ResponseDto getUserById(String userId) {
         User user=userRepo.findById(userId).orElseThrow(() -> new RuntimeException("user not found exeption"));
-        ResponseDto responseDto=new ResponseDto();
-        responseDto.setId(user.getId());
-        responseDto.setEmail(user.getEmail());
-        responseDto.setPassword(user.getPassword());
-        responseDto.setFirstName(user.getFirstName());
-        responseDto.setLastName(user.getLastName());
-        responseDto.setCreatedAt(user.getCreatedAt());
-        responseDto.setUpdatedAt(user.getUpdatedAt());
-        return responseDto;
+        return getResponseDto(user);
     }
 
 
+    public Boolean userExitById(String userId) {
+        log.info("Calling User Service {}",userId);
+        return userRepo.existsById(userId);
+    }
 }
