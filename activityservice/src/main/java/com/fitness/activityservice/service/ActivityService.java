@@ -5,13 +5,21 @@ import com.fitness.activityservice.dto.ResponseActivity;
 import com.fitness.activityservice.models.Activity;
 import com.fitness.activityservice.repository.ActivityRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor        //Dependency injection, immutable objects
 public class ActivityService {
     private final ActivityRepository activityRepository;
     private final UserValidation userValidation;
+    private final KafkaTemplate<String,Activity> kafkaTemplate;
+
+    @Value("${kafka.topic.name}")
+    private String topicName;
 
     public ResponseActivity trackActivity(RequestActivity request) {
 
@@ -30,6 +38,11 @@ public class ActivityService {
                 .startTime(request.getStartTime())
                 .build();
         Activity savedActivity=activityRepository.save(activity);
+        try {
+            kafkaTemplate.send(topicName,activity.getUserId(),activity);
+        }catch (Exception e){
+            log.info("Error in activity produer {}",e.toString());
+        }
         return mapToResponse(savedActivity);
     }
 

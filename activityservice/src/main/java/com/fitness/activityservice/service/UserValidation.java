@@ -9,11 +9,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Service
 @RequiredArgsConstructor
 public class UserValidation {
-    private final WebClient userServiceWebClient;
+    private final WebClient userWebClient;
 
     public boolean validateUser(String userId) {
         log.info("Calling User Service {}", userId);
-            return userServiceWebClient.get()
+            return userWebClient.get()
                     .uri("/api/users/{userId}/validate", userId)
                     .retrieve()
                     .bodyToMono(Boolean.class)
