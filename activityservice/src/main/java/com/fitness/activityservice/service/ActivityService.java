@@ -39,6 +39,7 @@ public class ActivityService {
                 .build();
         Activity savedActivity=activityRepository.save(activity);
         try {
+            log.info("Sending the Activity data to kafka broker");
             kafkaTemplate.send(topicName,activity.getUserId(),activity);
         }catch (Exception e){
             log.info("Error in activity produer {}",e.toString());
