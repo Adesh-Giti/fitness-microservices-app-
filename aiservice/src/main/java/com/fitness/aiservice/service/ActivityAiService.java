@@ -8,6 +8,12 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -32,12 +38,89 @@ public class ActivityAiService {
                     .get(0)
                     .path("text");
             String jsonContent=textNode.asString();
-            log.info("JSon Response {}",jsonContent);
+            log.info("Json Response {}",jsonContent);
+            JsonNode analysisJson=mapper.readTree(jsonContent);
+            JsonNode analysisNode=analysisJson.path("analysis");
+            StringBuilder fullAnalysis=new StringBuilder();
+            addAnalysisSection(fullAnalysis,analysisNode,"overall","Overall:");
+            addAnalysisSection(fullAnalysis,analysisNode,"pace","Pace:");
+            addAnalysisSection(fullAnalysis,analysisNode,"heartRate","HeartRate:");
+            addAnalysisSection(fullAnalysis,analysisNode,"caloriesBurned","CaloriesBurned:");
+            List<String> improvements=extractImprovements(analysisJson.path("improvements"));
+            List<String> suggestions=extractSuggestions(analysisJson.path("suggestions"));
+            List<String> safetys=extractSafetys(analysisJson.path("safety"));
+            return Recommendation.builder()
+                    .activityId(activity.getId())
+                    .userId(activity.getUserId())
+                    .type(activity.getType().toString())
+                    .recommendation(fullAnalysis.toString().trim())
+                    .improvements(improvements)
+                    .suggestions(suggestions)
+                    .safety(safetys)
+                    .build();
 
         }catch (Exception e){
-
+            e.printStackTrace();
+            return createDefaultRecommendation(activity);
         }
-        return null;
+    }
+
+    private Recommendation createDefaultRecommendation(Activity activity) {
+        return Recommendation.builder()
+                .activityId(activity.getId())
+                .userId(activity.getUserId())
+                .type(activity.getType().toString())
+                .recommendation("Unable to provide fullAnalysis")
+                .improvements(Collections.singletonList("Follow your current routine"))
+                .suggestions(Collections.singletonList("Consult to fitness consultant"))
+                .safety(Arrays.asList(
+                        "Stay Hydrated",
+                        "Follow rule",
+                        "Always warm up before exercise"
+                ))
+                .build();
+    }
+
+    private List<String> extractSafetys(JsonNode safetyNode) {
+        List<String> safetys=new ArrayList<>();
+        if (safetyNode.isArray()){
+            safetyNode.forEach(safety-> safetys.add(safety.asString()));
+        }
+        return safetys.isEmpty()?Collections.singletonList("No Specifc Safety Recommendation Provided")
+                :safetys;
+    }
+
+    private List<String> extractSuggestions(JsonNode suggestionsNode) {
+        List<String> suggestions=new ArrayList<>();
+        if (suggestionsNode.isArray()){
+            suggestionsNode.forEach(suggestion ->{
+                String workout=suggestion.path("workout").asString();
+                String description=suggestion.path("description").asString();
+                suggestions.add(String.format("%s: %s",workout,description));
+            });
+        }
+        return suggestions.isEmpty()?Collections.singletonList("No Specific Suggestion Provided"):suggestions;
+    }
+
+    private List<String> extractImprovements(JsonNode improvementNode) {
+        List<String> improvements=new ArrayList<>();
+        if(improvementNode.isArray()){
+            improvementNode.forEach(improvement ->{
+                String area=improvement.path("area").asString();
+                String recommendation=improvement.path("recommendation").asString();
+                improvements.add(String.format("%s: %s",area,recommendation));
+            });
+        }
+        return improvements.isEmpty()? Collections.singletonList("No specific requirements provided")
+                : improvements;
+    }
+
+    private void addAnalysisSection(StringBuilder fullAnalysis, JsonNode analysisNode, String key, String prefix) {
+        if (!analysisNode.path(key).isMissingNode()){
+            fullAnalysis=fullAnalysis.append(prefix)
+                    .append(analysisNode.path(key).asString())
+                    .append("\n\n");
+        }
     }
 
     private String createPromptForActivity(Activity activity) {
